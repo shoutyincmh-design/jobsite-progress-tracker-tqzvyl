@@ -12,6 +12,8 @@ export interface CSVParseResult {
 /**
  * Parse CSV content and convert to JobSite objects
  * Expected CSV format:
+ * jobName,jobType,location,coordinator,contractor,planning,foundation,construction,finishing,inspection,dueDate,notes
+ * OR
  * jobName,jobType,location,coordinator,contractor,stage1,stage2,stage3,stage4,stage5,dueDate,notes
  */
 export function parseCSV(csvContent: string): CSVParseResult {
@@ -21,7 +23,7 @@ export function parseCSV(csvContent: string): CSVParseResult {
     console.log('First 200 chars:', csvContent.substring(0, 200));
     
     // Split into lines and remove empty lines
-    const lines = csvContent.split('\n').filter(line => line.trim());
+    const lines = csvContent.split(/\r?\n/).filter(line => line.trim());
     console.log('Total lines found:', lines.length);
     
     if (lines.length < 2) {
@@ -36,6 +38,21 @@ export function parseCSV(csvContent: string): CSVParseResult {
     // Parse header
     const headers = parseCSVLine(lines[0]);
     console.log('CSV Headers:', headers);
+    console.log('Header count:', headers.length);
+
+    // Map stage column names (support both formats)
+    const stageColumnMap: { [key: string]: keyof JobSite['stages'] } = {
+      'stage1': 'stage1',
+      'stage2': 'stage2',
+      'stage3': 'stage3',
+      'stage4': 'stage4',
+      'stage5': 'stage5',
+      'planning': 'stage1',
+      'foundation': 'stage2',
+      'construction': 'stage3',
+      'finishing': 'stage4',
+      'inspection': 'stage5',
+    };
 
     // Validate required columns
     const requiredColumns = [
@@ -44,13 +61,13 @@ export function parseCSV(csvContent: string): CSVParseResult {
       'location',
       'coordinator',
       'contractor',
-      'stage1',
-      'stage2',
-      'stage3',
-      'stage4',
-      'stage5',
       'dueDate',
     ];
+
+    // Check for at least one stage column
+    const hasStageColumns = headers.some(h => 
+      Object.keys(stageColumnMap).includes(h.toLowerCase())
+    );
 
     const missingColumns = requiredColumns.filter(
       col => !headers.some(h => h.toLowerCase() === col.toLowerCase())
@@ -65,10 +82,19 @@ export function parseCSV(csvContent: string): CSVParseResult {
       };
     }
 
+    if (!hasStageColumns) {
+      console.error('No stage columns found');
+      return {
+        success: false,
+        error: 'CSV must contain at least one stage column (stage1-5 or planning/foundation/construction/finishing/inspection)',
+        details: `Found columns: ${headers.join(', ')}`,
+      };
+    }
+
     // Create column index map (case-insensitive)
     const columnMap: { [key: string]: number } = {};
     headers.forEach((header, index) => {
-      columnMap[header.toLowerCase()] = index;
+      columnMap[header.toLowerCase().trim()] = index;
     });
     console.log('Column map:', columnMap);
 
@@ -79,12 +105,30 @@ export function parseCSV(csvContent: string): CSVParseResult {
     for (let i = 1; i < lines.length; i++) {
       try {
         const values = parseCSVLine(lines[i]);
-        console.log(`Row ${i} values:`, values);
+        console.log(`Row ${i} values count:`, values.length);
+        console.log(`Row ${i} first 3 values:`, values.slice(0, 3));
         
         if (values.length === 0 || values.every(v => !v.trim())) {
           console.log(`Skipping empty row ${i}`);
           continue; // Skip empty rows
         }
+
+        // Get stage values
+        const stages: JobSite['stages'] = {
+          stage1: false,
+          stage2: false,
+          stage3: false,
+          stage4: false,
+          stage5: false,
+        };
+
+        // Map stage columns to stage values
+        Object.entries(stageColumnMap).forEach(([columnName, stageKey]) => {
+          const value = getColumnValue(values, columnMap, columnName);
+          if (value !== '') {
+            stages[stageKey] = parseBoolean(value);
+          }
+        });
 
         const jobSite: JobSite = {
           id: `imported-${Date.now()}-${i}`,
@@ -95,18 +139,12 @@ export function parseCSV(csvContent: string): CSVParseResult {
           contractor: getColumnValue(values, columnMap, 'contractor') || '',
           dueDate: formatDate(getColumnValue(values, columnMap, 'duedate')),
           notes: getColumnValue(values, columnMap, 'notes') || '',
-          stages: {
-            stage1: parseBoolean(getColumnValue(values, columnMap, 'stage1')),
-            stage2: parseBoolean(getColumnValue(values, columnMap, 'stage2')),
-            stage3: parseBoolean(getColumnValue(values, columnMap, 'stage3')),
-            stage4: parseBoolean(getColumnValue(values, columnMap, 'stage4')),
-            stage5: parseBoolean(getColumnValue(values, columnMap, 'stage5')),
-          },
+          stages,
           createdAt: new Date().toISOString().split('T')[0],
           updatedAt: new Date().toISOString().split('T')[0],
         };
 
-        console.log(`Created job site ${i}:`, jobSite.jobName);
+        console.log(`Created job site ${i}:`, jobSite.jobName, 'Stages:', stages);
         jobSites.push(jobSite);
       } catch (error) {
         console.error(`Error parsing row ${i + 1}:`, error);
@@ -186,7 +224,7 @@ function getColumnValue(
   columnName: string
 ): string {
   const index = columnMap[columnName.toLowerCase()];
-  return index !== undefined ? values[index] || '' : '';
+  return index !== undefined && index < values.length ? values[index] || '' : '';
 }
 
 /**
@@ -202,7 +240,6 @@ function parseBoolean(value: string): boolean {
     normalized === 'completed' ||
     normalized === 'complete'
   );
-  console.log(`parseBoolean('${value}') = ${result}`);
   return result;
 }
 
@@ -210,7 +247,7 @@ function parseBoolean(value: string): boolean {
  * Format date string to YYYY-MM-DD
  */
 function formatDate(dateStr: string): string {
-  if (!dateStr) {
+  if (!dateStr || dateStr.trim() === '') {
     // Default to 30 days from now
     const date = new Date();
     date.setDate(date.getDate() + 30);

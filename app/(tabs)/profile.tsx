@@ -23,13 +23,12 @@ export default function ProfileScreen() {
 
       // Pick a document
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', 'text/comma-separated-values', 'application/vnd.ms-excel', 'application/csv'],
+        type: ['text/csv', 'text/comma-separated-values', 'application/vnd.ms-excel', 'application/csv', 'text/plain'],
         copyToCacheDirectory: true,
         multiple: false,
       });
 
-      console.log('Document picker result type:', result.canceled ? 'canceled' : 'success');
-      console.log('Full result:', JSON.stringify(result, null, 2));
+      console.log('Document picker result:', result);
 
       if (result.canceled) {
         console.log('User cancelled document picker');
@@ -45,31 +44,61 @@ export default function ProfileScreen() {
       }
 
       const file = result.assets[0];
-      console.log('Selected file name:', file.name);
-      console.log('Selected file URI:', file.uri);
-      console.log('Selected file size:', file.size);
-      console.log('Selected file mimeType:', file.mimeType);
+      console.log('Selected file:', {
+        name: file.name,
+        uri: file.uri,
+        size: file.size,
+        mimeType: file.mimeType,
+      });
 
       // Check if file exists
-      const fileInfo = await FileSystem.getInfoAsync(file.uri);
-      console.log('File info:', fileInfo);
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(file.uri);
+        console.log('File info:', fileInfo);
 
-      if (!fileInfo.exists) {
-        console.error('File does not exist at URI');
-        Alert.alert('Error', 'Could not access the selected file');
-        setIsImporting(false);
-        return;
+        if (!fileInfo.exists) {
+          console.error('File does not exist at URI');
+          Alert.alert('Error', 'Could not access the selected file. Please try again.');
+          setIsImporting(false);
+          return;
+        }
+
+        if (fileInfo.size === 0) {
+          console.error('File is empty (size = 0)');
+          Alert.alert('Error', 'The selected file is empty');
+          setIsImporting(false);
+          return;
+        }
+
+        console.log(`File exists, size: ${fileInfo.size} bytes`);
+      } catch (fileInfoError) {
+        console.error('Error getting file info:', fileInfoError);
+        // Continue anyway, try to read the file
       }
 
       // Read file content
       console.log('Reading file content...');
-      const fileContent = await FileSystem.readAsStringAsync(file.uri);
-      console.log('File content length:', fileContent.length);
-      console.log('First 500 characters:', fileContent.substring(0, 500));
+      let fileContent: string;
+      
+      try {
+        fileContent = await FileSystem.readAsStringAsync(file.uri);
+        console.log('File read successfully');
+        console.log('Content length:', fileContent.length);
+        console.log('First 300 characters:', fileContent.substring(0, 300));
+      } catch (readError) {
+        console.error('Error reading file:', readError);
+        Alert.alert(
+          'Read Error',
+          'Could not read the file. Please ensure it is a valid CSV file.',
+          [{ text: 'OK' }]
+        );
+        setIsImporting(false);
+        return;
+      }
 
       if (!fileContent || fileContent.trim().length === 0) {
-        console.error('File is empty');
-        Alert.alert('Error', 'The selected file is empty');
+        console.error('File content is empty');
+        Alert.alert('Error', 'The selected file is empty or could not be read');
         setIsImporting(false);
         return;
       }
@@ -77,7 +106,12 @@ export default function ProfileScreen() {
       // Parse CSV
       console.log('Parsing CSV...');
       const parseResult = parseCSV(fileContent);
-      console.log('Parse result:', parseResult);
+      console.log('Parse result:', {
+        success: parseResult.success,
+        dataLength: parseResult.data?.length,
+        rowsProcessed: parseResult.rowsProcessed,
+        error: parseResult.error,
+      });
 
       if (!parseResult.success) {
         console.error('Parse failed:', parseResult.error);
@@ -93,6 +127,8 @@ export default function ProfileScreen() {
       // Add imported job sites
       if (parseResult.data && parseResult.data.length > 0) {
         console.log(`Adding ${parseResult.data.length} job sites to context...`);
+        console.log('Sample job site:', parseResult.data[0]);
+        
         addJobSites(parseResult.data);
         console.log('Job sites added successfully');
         
@@ -133,7 +169,8 @@ export default function ProfileScreen() {
       'Date format: YYYY-MM-DD or any standard date format\n\n' +
       'Example:\n' +
       template,
-      [{ text: 'OK' }]
+      [{ text: 'OK' }],
+      { cancelable: true }
     );
   };
 
@@ -232,12 +269,14 @@ export default function ProfileScreen() {
 
         <View style={styles.infoBox}>
           <Text style={[styles.infoTitle, { color: theme.colors.text }]}>How to Import Data</Text>
-          <Text style={[styles.infoText, { color: theme.dark ? '#98989D' : '#666' }]}>
+          <Text style={[styles.infoText, { color: theme.dark ? '#98989D' : '#666', lineHeight: 22 }]}>
             1. Prepare your Excel file with job site data{'\n'}
             2. Save it as CSV format (.csv){'\n'}
             3. Tap &quot;Import from CSV/Excel&quot; above{'\n'}
             4. Select your CSV file{'\n'}
             5. Your data will be imported automatically{'\n'}
+            {'\n'}
+            Required columns: jobName, jobType, location, coordinator, contractor, stage1-5, dueDate{'\n'}
             {'\n'}
             Check the console logs for detailed import information.
           </Text>
