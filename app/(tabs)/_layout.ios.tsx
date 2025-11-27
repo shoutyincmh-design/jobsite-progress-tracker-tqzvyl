@@ -1,17 +1,63 @@
+
 import React from 'react';
-import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
+import { Tabs } from 'expo-router/unstable-native-tabs';
+import { IconSymbol } from '@/components/IconSymbol';
+import { colors } from '@/styles/commonStyles';
 
 export default function TabLayout() {
   return (
-    <NativeTabs>
-      <NativeTabs.Trigger key="home" name="(home)">
-        <Icon sf="house.fill" />
-        <Label>Home</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="profile" name="profile">
-        <Icon sf="person.fill" />
-        <Label>Profile</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.text,
+        tabBarStyle: {
+          backgroundColor: colors.background,
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="(home)"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol
+              ios_icon_name="house.fill"
+              android_material_icon_name="home"
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="jobsites"
+        options={{
+          title: 'Job Sites',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol
+              ios_icon_name="briefcase.fill"
+              android_material_icon_name="work"
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol
+              ios_icon_name="person.fill"
+              android_material_icon_name="person"
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }
