@@ -2,24 +2,26 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { colors } from '@/styles/commonStyles';
-import { mockJobSites } from '@/data/jobsites';
+import { useJobSites } from '@/contexts/JobSiteContext';
 import { calculateProgress, getDueDateStatus } from '@/utils/jobsiteUtils';
 import { ProgressRing } from '@/components/ProgressRing';
 
 export default function HomeScreen() {
+  const { jobSites } = useJobSites();
+
   const stats = useMemo(() => {
-    const totalJobs = mockJobSites.length;
-    const completedJobs = mockJobSites.filter(job => calculateProgress(job.stages) === 100).length;
-    const inProgressJobs = mockJobSites.filter(job => {
+    const totalJobs = jobSites.length;
+    const completedJobs = jobSites.filter(job => calculateProgress(job.stages) === 100).length;
+    const inProgressJobs = jobSites.filter(job => {
       const progress = calculateProgress(job.stages);
       return progress > 0 && progress < 100;
     }).length;
-    const notStartedJobs = mockJobSites.filter(job => calculateProgress(job.stages) === 0).length;
+    const notStartedJobs = jobSites.filter(job => calculateProgress(job.stages) === 0).length;
     
-    const overdueJobs = mockJobSites.filter(job => getDueDateStatus(job.dueDate) === 'overdue').length;
-    const urgentJobs = mockJobSites.filter(job => getDueDateStatus(job.dueDate) === 'urgent').length;
+    const overdueJobs = jobSites.filter(job => getDueDateStatus(job.dueDate) === 'overdue').length;
+    const urgentJobs = jobSites.filter(job => getDueDateStatus(job.dueDate) === 'urgent').length;
     
-    const totalProgress = mockJobSites.reduce((sum, job) => sum + calculateProgress(job.stages), 0);
+    const totalProgress = jobSites.reduce((sum, job) => sum + calculateProgress(job.stages), 0);
     const averageProgress = totalJobs > 0 ? totalProgress / totalJobs : 0;
 
     return {
@@ -31,7 +33,7 @@ export default function HomeScreen() {
       urgentJobs,
       averageProgress,
     };
-  }, []);
+  }, [jobSites]);
 
   return (
     <ScrollView 

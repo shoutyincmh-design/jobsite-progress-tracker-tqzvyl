@@ -2,17 +2,19 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
 import { colors } from '@/styles/commonStyles';
-import { mockJobSites } from '@/data/jobsites';
+import { useJobSites } from '@/contexts/JobSiteContext';
 import { searchJobSites, sortJobSitesByDueDate } from '@/utils/jobsiteUtils';
 import { JobSiteCard } from '@/components/JobSiteCard';
 import { IconSymbol } from '@/components/IconSymbol';
+import { BlurView } from 'expo-blur';
 
 export default function JobSitesScreen() {
+  const { jobSites } = useJobSites();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'dueDate' | 'name'>('dueDate');
 
   const filteredAndSortedJobs = useMemo(() => {
-    let jobs = searchJobSites(mockJobSites, searchQuery);
+    let jobs = searchJobSites(jobSites, searchQuery);
     
     if (sortBy === 'dueDate') {
       jobs = sortJobSitesByDueDate(jobs);
@@ -21,7 +23,7 @@ export default function JobSitesScreen() {
     }
     
     return jobs;
-  }, [searchQuery, sortBy]);
+  }, [jobSites, searchQuery, sortBy]);
 
   return (
     <View style={styles.container}>
@@ -33,7 +35,7 @@ export default function JobSitesScreen() {
       </View>
 
       <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
+        <BlurView intensity={20} tint="dark" style={styles.searchInputContainer}>
           <IconSymbol
             ios_icon_name="magnifyingglass"
             android_material_icon_name="search"
@@ -58,24 +60,28 @@ export default function JobSitesScreen() {
               />
             </TouchableOpacity>
           )}
-        </View>
+        </BlurView>
 
         <View style={styles.sortContainer}>
           <TouchableOpacity
             style={[styles.sortButton, sortBy === 'dueDate' && styles.sortButtonActive]}
             onPress={() => setSortBy('dueDate')}
           >
-            <Text style={[styles.sortButtonText, sortBy === 'dueDate' && styles.sortButtonTextActive]}>
-              Due Date
-            </Text>
+            <BlurView intensity={sortBy === 'dueDate' ? 40 : 20} tint="dark" style={styles.sortButtonBlur}>
+              <Text style={[styles.sortButtonText, sortBy === 'dueDate' && styles.sortButtonTextActive]}>
+                Due Date
+              </Text>
+            </BlurView>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.sortButton, sortBy === 'name' && styles.sortButtonActive]}
             onPress={() => setSortBy('name')}
           >
-            <Text style={[styles.sortButtonText, sortBy === 'name' && styles.sortButtonTextActive]}>
-              Name
-            </Text>
+            <BlurView intensity={sortBy === 'name' ? 40 : 20} tint="dark" style={styles.sortButtonBlur}>
+              <Text style={[styles.sortButtonText, sortBy === 'name' && styles.sortButtonTextActive]}>
+                Name
+              </Text>
+            </BlurView>
           </TouchableOpacity>
         </View>
       </View>
@@ -139,13 +145,11 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.backgroundAlt,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
     marginBottom: 12,
+    overflow: 'hidden',
   },
   searchIcon: {
     marginRight: 8,
@@ -162,17 +166,16 @@ const styles = StyleSheet.create({
   },
   sortButton: {
     flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  sortButtonBlur: {
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: colors.backgroundAlt,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
   },
   sortButtonActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    // Active state handled by BlurView intensity
   },
   sortButtonText: {
     fontSize: 14,
@@ -181,7 +184,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   sortButtonTextActive: {
-    color: colors.background,
     opacity: 1,
   },
   scrollView: {

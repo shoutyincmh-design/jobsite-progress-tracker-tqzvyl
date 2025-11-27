@@ -2,17 +2,18 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
 import { colors } from '@/styles/commonStyles';
-import { mockJobSites } from '@/data/jobsites';
+import { useJobSites } from '@/contexts/JobSiteContext';
 import { searchJobSites, sortJobSitesByDueDate } from '@/utils/jobsiteUtils';
 import { JobSiteCard } from '@/components/JobSiteCard';
 import { IconSymbol } from '@/components/IconSymbol';
 
 export default function JobSitesScreen() {
+  const { jobSites } = useJobSites();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'dueDate' | 'name'>('dueDate');
 
   const filteredAndSortedJobs = useMemo(() => {
-    let jobs = searchJobSites(mockJobSites, searchQuery);
+    let jobs = searchJobSites(jobSites, searchQuery);
     
     if (sortBy === 'dueDate') {
       jobs = sortJobSitesByDueDate(jobs);
@@ -21,7 +22,7 @@ export default function JobSitesScreen() {
     }
     
     return jobs;
-  }, [searchQuery, sortBy]);
+  }, [jobSites, searchQuery, sortBy]);
 
   return (
     <View style={styles.container}>

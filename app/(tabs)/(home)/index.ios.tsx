@@ -2,24 +2,27 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { colors } from '@/styles/commonStyles';
-import { mockJobSites } from '@/data/jobsites';
+import { useJobSites } from '@/contexts/JobSiteContext';
 import { calculateProgress, getDueDateStatus } from '@/utils/jobsiteUtils';
 import { ProgressRing } from '@/components/ProgressRing';
+import { BlurView } from 'expo-blur';
 
 export default function HomeScreen() {
+  const { jobSites } = useJobSites();
+
   const stats = useMemo(() => {
-    const totalJobs = mockJobSites.length;
-    const completedJobs = mockJobSites.filter(job => calculateProgress(job.stages) === 100).length;
-    const inProgressJobs = mockJobSites.filter(job => {
+    const totalJobs = jobSites.length;
+    const completedJobs = jobSites.filter(job => calculateProgress(job.stages) === 100).length;
+    const inProgressJobs = jobSites.filter(job => {
       const progress = calculateProgress(job.stages);
       return progress > 0 && progress < 100;
     }).length;
-    const notStartedJobs = mockJobSites.filter(job => calculateProgress(job.stages) === 0).length;
+    const notStartedJobs = jobSites.filter(job => calculateProgress(job.stages) === 0).length;
     
-    const overdueJobs = mockJobSites.filter(job => getDueDateStatus(job.dueDate) === 'overdue').length;
-    const urgentJobs = mockJobSites.filter(job => getDueDateStatus(job.dueDate) === 'urgent').length;
+    const overdueJobs = jobSites.filter(job => getDueDateStatus(job.dueDate) === 'overdue').length;
+    const urgentJobs = jobSites.filter(job => getDueDateStatus(job.dueDate) === 'urgent').length;
     
-    const totalProgress = mockJobSites.reduce((sum, job) => sum + calculateProgress(job.stages), 0);
+    const totalProgress = jobSites.reduce((sum, job) => sum + calculateProgress(job.stages), 0);
     const averageProgress = totalJobs > 0 ? totalProgress / totalJobs : 0;
 
     return {
@@ -31,7 +34,7 @@ export default function HomeScreen() {
       urgentJobs,
       averageProgress,
     };
-  }, []);
+  }, [jobSites]);
 
   return (
     <ScrollView 
@@ -44,7 +47,7 @@ export default function HomeScreen() {
         <Text style={styles.subtitle}>Track all your construction projects</Text>
       </View>
 
-      <View style={styles.overallProgressCard}>
+      <BlurView intensity={20} tint="dark" style={styles.overallProgressCard}>
         <Text style={styles.cardTitle}>Overall Progress</Text>
         <View style={styles.progressRingContainer}>
           <ProgressRing 
@@ -55,37 +58,37 @@ export default function HomeScreen() {
           />
         </View>
         <Text style={styles.progressLabel}>Average Completion</Text>
-      </View>
+      </BlurView>
 
       <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
+        <BlurView intensity={20} tint="dark" style={styles.statCard}>
           <Text style={styles.statNumber}>{stats.totalJobs}</Text>
           <Text style={styles.statLabel}>Total Jobs</Text>
-        </View>
-        <View style={styles.statCard}>
+        </BlurView>
+        <BlurView intensity={20} tint="dark" style={styles.statCard}>
           <Text style={[styles.statNumber, { color: '#34C759' }]}>
             {stats.completedJobs}
           </Text>
           <Text style={styles.statLabel}>Completed</Text>
-        </View>
+        </BlurView>
       </View>
 
       <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
+        <BlurView intensity={20} tint="dark" style={styles.statCard}>
           <Text style={[styles.statNumber, { color: '#007AFF' }]}>
             {stats.inProgressJobs}
           </Text>
           <Text style={styles.statLabel}>In Progress</Text>
-        </View>
-        <View style={styles.statCard}>
+        </BlurView>
+        <BlurView intensity={20} tint="dark" style={styles.statCard}>
           <Text style={[styles.statNumber, { color: '#8E8E93' }]}>
             {stats.notStartedJobs}
           </Text>
           <Text style={styles.statLabel}>Not Started</Text>
-        </View>
+        </BlurView>
       </View>
 
-      <View style={styles.alertsCard}>
+      <BlurView intensity={20} tint="dark" style={styles.alertsCard}>
         <Text style={styles.cardTitle}>Alerts</Text>
         <View style={styles.alertRow}>
           <View style={[styles.alertDot, { backgroundColor: '#FF3B30' }]} />
@@ -99,7 +102,7 @@ export default function HomeScreen() {
             {stats.urgentJobs} {stats.urgentJobs === 1 ? 'job' : 'jobs'} due within 7 days
           </Text>
         </View>
-      </View>
+      </BlurView>
 
       <View style={styles.infoCard}>
         <Text style={styles.infoText}>
@@ -135,15 +138,11 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   overallProgressCard: {
-    backgroundColor: colors.backgroundAlt,
     borderRadius: 20,
     padding: 24,
     marginBottom: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.2)',
-    elevation: 4,
+    overflow: 'hidden',
   },
   cardTitle: {
     fontSize: 20,
@@ -167,14 +166,10 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)',
-    elevation: 3,
+    overflow: 'hidden',
   },
   statNumber: {
     fontSize: 36,
@@ -189,14 +184,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   alertsCard: {
-    backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)',
-    elevation: 3,
+    overflow: 'hidden',
   },
   alertRow: {
     flexDirection: 'row',
