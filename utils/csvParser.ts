@@ -6,6 +6,7 @@ export interface CSVParseResult {
   data?: JobSite[];
   error?: string;
   rowsProcessed?: number;
+  details?: string;
 }
 
 /**
@@ -15,15 +16,20 @@ export interface CSVParseResult {
  */
 export function parseCSV(csvContent: string): CSVParseResult {
   try {
-    console.log('Starting CSV parse...');
+    console.log('=== CSV PARSER START ===');
+    console.log('CSV content length:', csvContent.length);
+    console.log('First 200 chars:', csvContent.substring(0, 200));
     
     // Split into lines and remove empty lines
     const lines = csvContent.split('\n').filter(line => line.trim());
+    console.log('Total lines found:', lines.length);
     
     if (lines.length < 2) {
+      console.error('Not enough lines in CSV');
       return {
         success: false,
         error: 'CSV file must contain at least a header row and one data row',
+        details: `Found ${lines.length} lines`,
       };
     }
 
@@ -51,9 +57,11 @@ export function parseCSV(csvContent: string): CSVParseResult {
     );
 
     if (missingColumns.length > 0) {
+      console.error('Missing columns:', missingColumns);
       return {
         success: false,
         error: `Missing required columns: ${missingColumns.join(', ')}`,
+        details: `Found columns: ${headers.join(', ')}`,
       };
     }
 
@@ -62,6 +70,7 @@ export function parseCSV(csvContent: string): CSVParseResult {
     headers.forEach((header, index) => {
       columnMap[header.toLowerCase()] = index;
     });
+    console.log('Column map:', columnMap);
 
     // Parse data rows
     const jobSites: JobSite[] = [];
@@ -70,8 +79,10 @@ export function parseCSV(csvContent: string): CSVParseResult {
     for (let i = 1; i < lines.length; i++) {
       try {
         const values = parseCSVLine(lines[i]);
+        console.log(`Row ${i} values:`, values);
         
         if (values.length === 0 || values.every(v => !v.trim())) {
+          console.log(`Skipping empty row ${i}`);
           continue; // Skip empty rows
         }
 
@@ -95,6 +106,7 @@ export function parseCSV(csvContent: string): CSVParseResult {
           updatedAt: new Date().toISOString().split('T')[0],
         };
 
+        console.log(`Created job site ${i}:`, jobSite.jobName);
         jobSites.push(jobSite);
       } catch (error) {
         console.error(`Error parsing row ${i + 1}:`, error);
@@ -102,14 +114,18 @@ export function parseCSV(csvContent: string): CSVParseResult {
       }
     }
 
+    console.log(`Total job sites parsed: ${jobSites.length}`);
+
     if (jobSites.length === 0) {
+      console.error('No valid job sites found');
       return {
         success: false,
         error: errors.length > 0 ? errors.join('\n') : 'No valid data rows found',
+        details: `Processed ${lines.length - 1} data rows`,
       };
     }
 
-    console.log(`Successfully parsed ${jobSites.length} job sites`);
+    console.log('=== CSV PARSER SUCCESS ===');
     return {
       success: true,
       data: jobSites,
@@ -120,6 +136,7 @@ export function parseCSV(csvContent: string): CSVParseResult {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown parsing error',
+      details: error instanceof Error ? error.stack : undefined,
     };
   }
 }
@@ -177,7 +194,7 @@ function getColumnValue(
  */
 function parseBoolean(value: string): boolean {
   const normalized = value.toLowerCase().trim();
-  return (
+  const result = (
     normalized === 'true' ||
     normalized === 'yes' ||
     normalized === '1' ||
@@ -185,6 +202,8 @@ function parseBoolean(value: string): boolean {
     normalized === 'completed' ||
     normalized === 'complete'
   );
+  console.log(`parseBoolean('${value}') = ${result}`);
+  return result;
 }
 
 /**

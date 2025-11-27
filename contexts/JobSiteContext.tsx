@@ -27,11 +27,12 @@ export function JobSiteProvider({ children }: { children: React.ReactNode }) {
 
   const loadJobSites = async () => {
     try {
-      console.log('Loading job sites from storage...');
+      console.log('=== LOADING JOB SITES FROM STORAGE ===');
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         console.log(`Loaded ${parsed.length} job sites from storage`);
+        console.log('First job site:', parsed[0]?.jobName);
         setJobSitesState(parsed);
       } else {
         console.log('No stored job sites, using mock data');
@@ -45,26 +46,43 @@ export function JobSiteProvider({ children }: { children: React.ReactNode }) {
 
   const saveJobSites = async (sites: JobSite[]) => {
     try {
-      console.log(`Saving ${sites.length} job sites to storage...`);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sites));
+      console.log(`=== SAVING ${sites.length} JOB SITES TO STORAGE ===`);
+      const jsonString = JSON.stringify(sites);
+      console.log('JSON string length:', jsonString.length);
+      await AsyncStorage.setItem(STORAGE_KEY, jsonString);
       console.log('Job sites saved successfully');
+      
+      // Verify save
+      const verification = await AsyncStorage.getItem(STORAGE_KEY);
+      if (verification) {
+        const verified = JSON.parse(verification);
+        console.log(`Verified: ${verified.length} job sites in storage`);
+      }
     } catch (error) {
       console.error('Error saving job sites:', error);
     }
   };
 
   const setJobSites = (sites: JobSite[]) => {
+    console.log(`=== SET JOB SITES: ${sites.length} sites ===`);
     setJobSitesState(sites);
     saveJobSites(sites);
   };
 
   const addJobSites = (newJobSites: JobSite[]) => {
+    console.log(`=== ADD JOB SITES: Adding ${newJobSites.length} new sites ===`);
+    console.log('Current job sites:', jobSites.length);
+    console.log('New job sites to add:', newJobSites.map(js => js.jobName));
+    
     const updated = [...jobSites, ...newJobSites];
+    console.log('Updated total:', updated.length);
+    
     setJobSitesState(updated);
     saveJobSites(updated);
   };
 
   const clearJobSites = () => {
+    console.log('=== CLEARING JOB SITES - RESETTING TO MOCK DATA ===');
     setJobSitesState(mockJobSites);
     saveJobSites(mockJobSites);
   };
